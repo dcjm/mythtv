@@ -27,6 +27,7 @@
 #include "dvbrecorder.h"
 #include "dvbchannel.h"
 #include "ringbuffer.h"
+#include "dvbstreamdata.h"
 #include "tv_rec.h"
 #include "mythlogging.h"
 
@@ -103,12 +104,26 @@ void DVBRecorder::run(void)
     if (_channel && (_channel->GetSIStandard() == "dvb"))
         _stream_data->AddListeningPID(DVB_TDT_PID);
 
+    DVBStreamData *dsd = dynamic_cast<DVBStreamData*>(_stream_data);
+    if (dsd)
+        dsd->AddDVBEITListener(this);
+
     StartNewFile();
 
     _stream_data->AddAVListener(this);
     _stream_data->AddWritingListener(this);
     _stream_handler->AddListener(_stream_data, false, true,
                          (_record_mpts) ? ringBuffer->GetFilename() : QString());
+
+    QString recordingProgId = QString("?"), recordingTitle = QString("?");
+    if (curRecording)
+    {
+        recordingProgId = curRecording->GetProgramID();
+        recordingTitle = curRecording->GetTitle();
+    }
+    LOG(VB_GENERAL, LOG_INFO, LOC + QString("Recording %1 (%2) service %3 net %4 transport %5")
+        .arg(recordingTitle).arg(recordingProgId).arg(dsd->DesiredProgram())
+        .arg(dsd->DesiredNetworkID()).arg(dsd->DesiredTransportID()));
 
     while (IsRecordingRequested() && !IsErrored())
     {
@@ -141,6 +156,9 @@ void DVBRecorder::run(void)
     _stream_handler->RemoveListener(_stream_data);
     _stream_data->RemoveWritingListener(this);
     _stream_data->RemoveAVListener(this);
+
+    if (dsd)
+        dsd->RemoveDVBEITListener(this);
 
     Close();
 

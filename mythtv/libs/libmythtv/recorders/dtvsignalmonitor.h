@@ -104,7 +104,6 @@ class DTVSignalMonitor : public SignalMonitor,
   protected:
     DTVChannel *GetDTVChannel(void);
     void UpdateMonitorValues(void);
-    void UpdateListeningForEIT(void);
 
   protected:
     MPEGStreamData    *stream_data;

@@ -406,6 +406,7 @@ class MTV_PUBLIC TVRec : public SignalMonitorListener, public QRunnable
     QDateTime    recordEndTime;
     QHash<QString,int> autoRunJobs; // RecordingInfo::MakeUniqueKey()->autoRun
     int          overrecordseconds;
+    bool         eitIsRunning, eitIsFollowing;
 
     // Pending recording info
     PendingMap   pendingRecordings;

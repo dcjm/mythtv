@@ -51,10 +51,7 @@ class MTV_PUBLIC DVBStreamData : virtual public MPEGStreamData
     inline void SetDishNetEIT(bool);
     inline bool HasAnyEIT(void) const;
     inline bool HasEIT(uint serviceid) const;
-    bool HasEITPIDChanges(const uint_vec_t &in_use_pids) const;
-    bool GetEITPIDChanges(const uint_vec_t &in_use_pids,
-                          uint_vec_t &add_pids,
-                          uint_vec_t &del_pids) const;
+    void UpdateEITListeners(void);
 
     // Table versions
     void SetVersionNIT(int version, uint last_section)
@@ -253,6 +250,8 @@ class MTV_PUBLIC DVBStreamData : virtual public MPEGStreamData
     // Caching
     mutable nit_cache_t       _cached_nit;  // section -> sdt
     mutable sdt_cache_t       _cached_sdts; // tsid+section -> sdt
+
+    vector<uint>              _eit_pids;
 };
 
 inline void DVBStreamData::SetDishNetEIT(bool use_dishnet_eit)

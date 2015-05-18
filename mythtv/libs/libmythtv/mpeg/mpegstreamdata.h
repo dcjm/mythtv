@@ -110,12 +110,7 @@ class MTV_PUBLIC MPEGStreamData : public EITSource
     // EIT Source
     virtual void SetEITHelper(EITHelper *eit_helper);
     virtual void SetEITRate(float rate);
-    virtual bool HasEITPIDChanges(const uint_vec_t& /*in_use_pids*/) const
-        { return false; }
-    virtual bool GetEITPIDChanges(const uint_vec_t& /*in_use_pids*/,
-                                  uint_vec_t& /*add_pids*/,
-                                  uint_vec_t& /*del_pids*/) const
-        { return false; }
+    virtual void UpdateEITListeners(void) { }
 
     // Table processin
     void SetIgnoreCRC(bool haveCRCbug) { _have_CRC_bug = haveCRCbug; }

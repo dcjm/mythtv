@@ -28,6 +28,7 @@
 #include "ringbuffer.h"
 #include "tv_rec.h"
 #include "mythsystemevent.h"
+#include "../mpeg/dvbtables.h"
 
 extern "C" {
 #include "libavcodec/mpegvideo.h"
@@ -80,6 +81,9 @@ DTVRecorder::DTVRecorder(TVRec *rec) :
     _has_no_av(false),
     // record 'raw' mpts?
     _record_mpts(false),
+    // EIT timing
+    _is_running(false),
+    _is_following(false),
     // statistics
     _use_pts(false),
     _packet_count(0),
@@ -1604,6 +1608,69 @@ RecordingQuality *DTVRecorder::GetRecordingQuality(const RecordingInfo *r) const
         _continuity_error_count.fetchAndAddRelaxed(0),
         _packet_count.fetchAndAddRelaxed(0));
     return recq;
+}
+
+void DTVRecorder::HandleEIT(const DVBEventInformationTable *eit)
+{
+    DVBStreamData *dsd = dynamic_cast<DVBStreamData*>(_stream_data);
+    if (dsd &&
+        (TableID::PF_EIT == eit->TableID() || TableID::FS_EITst == eit->TableID()) &&
+        eit->ServiceID() == dsd->DesiredProgram() &&
+        eit->OriginalNetworkID() == dsd->DesiredNetworkID() &&
+        eit->TSID() == dsd->DesiredTransportID())
+    {
+        for (uint i = 0; i < eit->EventCount(); i++)
+        {
+            QString programId, recordingProgId, recordingTitle;
+            desc_list_t list = MPEGDescriptor::Parse(
+                eit->Descriptors(i), eit->DescriptorsLength(i));
+            desc_list_t contentIds =
+                MPEGDescriptor::FindAll(list, DescriptorID::dvb_content_identifier);
+            for (uint j = 0; j < contentIds.size(); j++)
+            {
+                DVBContentIdentifierDescriptor desc(contentIds[j]);
+                if (desc.ContentEncoding() == 0 &&
+                    (desc.ContentType() == 0x01 || desc.ContentType() == 0x31))
+                {
+                    programId = desc.ContentId();
+                }
+            }
+
+            if (curRecording)
+            {
+                recordingProgId = curRecording->GetProgramID();
+                recordingTitle = curRecording->GetTitle();
+            }
+            // The programid in curRecording will have the default authority at the start
+            // so we have a match if they end the same.
+            bool isMatch = false;
+            if (!programId.isEmpty() && !recordingProgId.isEmpty())
+                isMatch = recordingProgId.endsWith(programId.toLower());
+
+            if (eit->Section() == 0)
+            {
+                LOG(VB_GENERAL, LOG_INFO, LOC + QString("Current is now %1").arg(programId));
+                _is_running = isMatch;
+                // A programme ceases to be "following" when it becomes "running".
+                // "Following" may be updated just before "Current".
+                if (_is_following && _is_running)
+                    _is_following = false;
+            }
+            else if (eit->Section() == 1)
+            {
+                LOG(VB_GENERAL, LOG_INFO, LOC + QString("Following is now %1").arg(programId));
+                if (isMatch)
+                    _is_following = true;
+            }
+            if (curRecording)
+            {
+                LOG(VB_GENERAL, LOG_INFO,
+                    LOC + QString("Recording for %1 (%2) running=%3, following=%4")
+                    .arg(curRecording->GetTitle()).arg(recordingProgId)
+                    .arg(_is_running).arg(_is_following));
+            }
+        }
+    }
 }
 
 /* vim: set expandtab tabstop=4 shiftwidth=4: */

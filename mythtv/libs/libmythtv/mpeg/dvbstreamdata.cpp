@@ -10,7 +10,7 @@ using namespace std;
 #include "eithelper.h"
 
 #define PREMIERE_ONID 133
-#define FREESAT_EIT_PID 3842
+#define ASTRA28_2_NID 2
 #define MCA_ONID 6144
 #define MCA_EIT_TSID 136
 #define MCA_EIT_PID 1018
@@ -119,6 +119,11 @@ bool DVBStreamData::IsRedundant(uint pid, const PSIPTable &psip) const
         is_eit |= (TableID::SC_EITbeg  <= table_id &&
                    TableID::SC_EITend  >= table_id);
     }
+    if (FREESAT_ST_EIT_PID == pid)
+    {
+        // Now/Next for Freesat: this or other
+        is_eit |= TableID::FS_EITst == table_id;
+    }
     if (is_eit)
     {
         uint service_id = psip.TableIDExtension();
@@ -158,6 +163,11 @@ bool DVBStreamData::IsRedundant(uint pid, const PSIPTable &psip) const
         // for all transports
         is_eit |= (TableID::DN_EITbego <= table_id &&
                    TableID::DN_EITendo >= table_id);
+    }
+    if (FREESAT_ST_EIT_PID == pid)
+    {
+        // Now/Next for Freesat: this or other
+        is_eit |= TableID::FS_EITst == table_id;
     }
     if (is_eit)
     {
@@ -383,7 +393,9 @@ bool DVBStreamData::HandleTables(uint pid, const PSIPTable &psip)
         }
     }
 
-    if ((DVB_EIT_PID == pid || DVB_DNLONG_EIT_PID == pid || FREESAT_EIT_PID == pid ||
+    if ((DVB_EIT_PID == pid || DVB_DNLONG_EIT_PID == pid ||
+        ((ASTRA28_2_NID == _desired_netid) && (FREESAT_EIT_PID == pid ||
+          FREESAT_ST_EIT_PID == pid)) ||
         ((MCA_ONID == _desired_netid) && (MCA_EIT_TSID == _desired_tsid) &&
         (MCA_EIT_PID == pid)) || DVB_BVLONG_EIT_PID == pid) &&
 
@@ -452,122 +464,90 @@ void DVBStreamData::ProcessSDT(uint tsid, const ServiceDescriptionTable *sdt)
     for (uint i = 0; i < _dvb_main_listeners.size(); i++)
         _dvb_main_listeners[i]->HandleSDT(tsid, sdt);
 }
-
-bool DVBStreamData::HasEITPIDChanges(const uint_vec_t &in_use_pids) const
+void DVBStreamData::UpdateEITListeners(void)
 {
     QMutexLocker locker(&_listener_lock);
-    bool want_eit = (_eit_rate >= 0.5f) && HasAnyEIT();
-    bool has_eit  = in_use_pids.size();
-    return want_eit != has_eit;
-}
+    bool want_eit = (_eit_rate >= 0.5f || _dvb_eit_listeners.size()) && HasAnyEIT();
+    bool has_eit  = _eit_pids.size();
 
-bool DVBStreamData::GetEITPIDChanges(const uint_vec_t &cur_pids,
-                                     uint_vec_t &add_pids,
-                                     uint_vec_t &del_pids) const
-{
-    QMutexLocker locker(&_listener_lock);
+    if (want_eit == has_eit)
+        return;
 
-    if ((_eit_rate >= 0.5f) && HasAnyEIT())
+    if ((_eit_rate >= 0.5f || _dvb_eit_listeners.size()) && HasAnyEIT())
     {
-        if (find(cur_pids.begin(), cur_pids.end(),
-                 (uint) DVB_EIT_PID) == cur_pids.end())
+        if (_desired_netid != ASTRA28_2_NID &&
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) DVB_EIT_PID) == _eit_pids.end())
         {
-            add_pids.push_back(DVB_EIT_PID);
+            _eit_pids.push_back(DVB_EIT_PID);
+            AddListeningPID(DVB_EIT_PID);
         }
 
         if (_dvb_eit_dishnet_long &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) DVB_DNLONG_EIT_PID) == cur_pids.end())
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) DVB_DNLONG_EIT_PID) == _eit_pids.end())
         {
-            add_pids.push_back(DVB_DNLONG_EIT_PID);
+            _eit_pids.push_back(DVB_DNLONG_EIT_PID);
+            AddListeningPID(DVB_DNLONG_EIT_PID);
         }
 
         if (_dvb_eit_dishnet_long &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) DVB_BVLONG_EIT_PID) == cur_pids.end())
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) DVB_BVLONG_EIT_PID) == _eit_pids.end())
         {
-            add_pids.push_back(DVB_BVLONG_EIT_PID);
+            _eit_pids.push_back(DVB_BVLONG_EIT_PID);
+            AddListeningPID(DVB_BVLONG_EIT_PID);
         }
 
         if (_desired_netid == PREMIERE_ONID &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) PREMIERE_EIT_DIREKT_PID) == cur_pids.end())
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) PREMIERE_EIT_DIREKT_PID) == _eit_pids.end())
         {
-            add_pids.push_back(PREMIERE_EIT_DIREKT_PID);
+            _eit_pids.push_back(PREMIERE_EIT_DIREKT_PID);
+            AddListeningPID(PREMIERE_EIT_DIREKT_PID);
         }
 
         if (_desired_netid == PREMIERE_ONID &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) PREMIERE_EIT_SPORT_PID) == cur_pids.end())
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) PREMIERE_EIT_SPORT_PID) == _eit_pids.end())
         {
-            add_pids.push_back(PREMIERE_EIT_SPORT_PID);
+            _eit_pids.push_back(PREMIERE_EIT_SPORT_PID);
+            AddListeningPID(PREMIERE_EIT_SPORT_PID);
         }
 
-        if (find(cur_pids.begin(), cur_pids.end(),
-                 (uint) FREESAT_EIT_PID) == cur_pids.end())
+        if (_desired_netid == ASTRA28_2_NID &&
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) FREESAT_EIT_PID) == _eit_pids.end())
         {
-            add_pids.push_back(FREESAT_EIT_PID);
+            _eit_pids.push_back(FREESAT_EIT_PID);
+            AddListeningPID(FREESAT_EIT_PID);
+        }
+
+        if (_desired_netid == ASTRA28_2_NID &&
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) FREESAT_ST_EIT_PID) == _eit_pids.end())
+        {
+            _eit_pids.push_back(FREESAT_ST_EIT_PID);
+            AddListeningPID(FREESAT_ST_EIT_PID);
         }
 
         if (MCA_ONID == _desired_netid && MCA_EIT_TSID == _desired_tsid &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) MCA_EIT_PID) == cur_pids.end())
+            find(_eit_pids.begin(), _eit_pids.end(),
+                 (uint) MCA_EIT_PID) == _eit_pids.end())
         {
-            add_pids.push_back(MCA_EIT_PID);
+            _eit_pids.push_back(MCA_EIT_PID);
+            AddListeningPID(MCA_EIT_PID);
         }
 
     }
     else
     {
-        if (find(cur_pids.begin(), cur_pids.end(),
-                 (uint) DVB_EIT_PID) != cur_pids.end())
+        for (uint i = 0; i < _eit_pids.size(); i++)
         {
-            del_pids.push_back(DVB_EIT_PID);
+            RemoveListeningPID(_eit_pids[i]);
         }
-
-        if (_dvb_eit_dishnet_long &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) DVB_DNLONG_EIT_PID) != cur_pids.end())
-        {
-            del_pids.push_back(DVB_DNLONG_EIT_PID);
-        }
-
-        if (_dvb_eit_dishnet_long &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) DVB_BVLONG_EIT_PID) != cur_pids.end())
-        {
-            del_pids.push_back(DVB_BVLONG_EIT_PID);
-        }
-
-        if (_desired_netid == PREMIERE_ONID &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) PREMIERE_EIT_DIREKT_PID) != cur_pids.end())
-        {
-            del_pids.push_back(PREMIERE_EIT_DIREKT_PID);
-        }
-
-        if (_desired_netid == PREMIERE_ONID &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) PREMIERE_EIT_SPORT_PID) != cur_pids.end())
-        {
-            del_pids.push_back(PREMIERE_EIT_SPORT_PID);
-        }
-
-        if (find(cur_pids.begin(), cur_pids.end(),
-                 (uint) FREESAT_EIT_PID) != cur_pids.end())
-        {
-            del_pids.push_back(FREESAT_EIT_PID);
-        }
-
-        if (MCA_ONID == _desired_netid && MCA_EIT_TSID == _desired_tsid &&
-            find(cur_pids.begin(), cur_pids.end(),
-                 (uint) MCA_EIT_PID) != cur_pids.end())
-        {
-            del_pids.push_back(MCA_EIT_PID);
-        }
+        _eit_pids.clear();
     }
-
-    return add_pids.size() || del_pids.size();
 }
 
 void DVBStreamData::SetNITSectionSeen(uint section)

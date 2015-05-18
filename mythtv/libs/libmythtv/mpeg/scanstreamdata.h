@@ -22,11 +22,7 @@ class MTV_PUBLIC ScanStreamData :
     using DVBStreamData::Reset;
     virtual void Reset(void);
 
-    bool HasEITPIDChanges(const uint_vec_t& /*in_use_pids*/) const
-        { return false; }
-    bool GetEITPIDChanges(const uint_vec_t& /*in_use_pids*/,
-                          uint_vec_t& /*add_pids*/,
-                          uint_vec_t& /*del_pids*/) const { return false; }
+    virtual void UpdateEITListeners(void) { }
 
     QString GetSIStandard(QString guess = "mpeg") const;
 
