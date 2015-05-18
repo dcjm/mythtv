@@ -485,24 +485,20 @@ bool ATSCStreamData::HandleTables(uint pid, const PSIPTable &psip)
     return false;
 }
 
-bool ATSCStreamData::HasEITPIDChanges(const uint_vec_t &in_use_pids) const
-{
-    QMutexLocker locker(&_listener_lock);
-    uint eit_count = (uint) round(_atsc_eit_pids.size() * _eit_rate);
-    uint ett_count = (uint) round(_atsc_ett_pids.size() * _eit_rate);
-    return (in_use_pids.size() != (eit_count + ett_count) || _atsc_eit_reset);
-}
-
 bool ATSCStreamData::GetEITPIDChanges(const uint_vec_t &cur_pids,
                                       uint_vec_t &add_pids,
                                       uint_vec_t &del_pids) const
 {
     QMutexLocker locker(&_listener_lock);
 
-    _atsc_eit_reset = false;
-
     uint eit_count = (uint) round(_atsc_eit_pids.size() * _eit_rate);
     uint ett_count = (uint) round(_atsc_ett_pids.size() * _eit_rate);
+
+    if (cur_pids.size() == (eit_count + ett_count) && !_atsc_eit_reset)
+        return false;
+
+    _atsc_eit_reset = false;
+
     uint i;
 
 #if 0
@@ -535,6 +531,29 @@ bool ATSCStreamData::GetEITPIDChanges(const uint_vec_t &cur_pids,
     }
 
     return add_pids.size() || del_pids.size();
+}
+
+void ATSCStreamData::UpdateEITListeners(void)
+{
+    vector<uint> add_eit, del_eit;
+
+    if (GetEITPIDChanges(_eit_pids, add_eit, del_eit))
+    {
+        for (uint i = 0; i < del_eit.size(); i++)
+        {
+            uint_vec_t::iterator it;
+            it = find(_eit_pids.begin(), _eit_pids.end(), del_eit[i]);
+            if (it != _eit_pids.end())
+                _eit_pids.erase(it);
+            RemoveListeningPID(del_eit[i]);
+        }
+
+        for (uint i = 0; i < add_eit.size(); i++)
+        {
+            _eit_pids.push_back(add_eit[i]);
+            AddListeningPID(add_eit[i]);
+        }
+    }
 }
 
 void ATSCStreamData::ProcessMGT(const MasterGuideTable *mgt)

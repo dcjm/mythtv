@@ -177,30 +177,6 @@ void DTVSignalMonitor::UpdateMonitorValues(void)
     matchingCrypt.SetValue((flags & kDTVSigMon_CryptMatch) ? 1 : 0);
 }
 
-void DTVSignalMonitor::UpdateListeningForEIT(void)
-{
-    vector<uint> add_eit, del_eit;
-
-    if (GetStreamData()->HasEITPIDChanges(eit_pids) &&
-        GetStreamData()->GetEITPIDChanges(eit_pids, add_eit, del_eit))
-    {
-        for (uint i = 0; i < del_eit.size(); i++)
-        {
-            uint_vec_t::iterator it;
-            it = find(eit_pids.begin(), eit_pids.end(), del_eit[i]);
-            if (it != eit_pids.end())
-                eit_pids.erase(it);
-            GetStreamData()->RemoveListeningPID(del_eit[i]);
-        }
-
-        for (uint i = 0; i < add_eit.size(); i++)
-        {
-            eit_pids.push_back(add_eit[i]);
-            GetStreamData()->AddListeningPID(add_eit[i]);
-        }
-    }
-}
-
 void DTVSignalMonitor::SetChannel(int major, int minor)
 {
     DBG_SM(QString("SetChannel(%1, %2)").arg(major).arg(minor), "");

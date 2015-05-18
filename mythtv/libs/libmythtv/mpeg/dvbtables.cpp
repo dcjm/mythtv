@@ -245,6 +245,8 @@ bool DVBEventInformationTable::IsEIT(uint table_id)
     // Dish Network Long Term Future Event Information for all transports
     is_eit |= (TableID::DN_EITbego <= table_id &&
                TableID::DN_EITendo >= table_id);
+    // Freesat short-term EIT
+    is_eit |= TableID::FS_EITst == table_id;
 
     return is_eit;
 }

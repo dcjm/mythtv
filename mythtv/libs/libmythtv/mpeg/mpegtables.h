@@ -357,6 +357,9 @@ class MTV_PUBLIC TableID
         PREMIERE_CIT = 0xA0,
         PREMIERE_CPT = 0xA1,
 
+        // Private UK Freesat short-term EIT
+        FS_EITst = 0xD1,
+
         ECN      = 0xA0,
         SRVLOC   = 0xA1,
         TSS      = 0xA2,

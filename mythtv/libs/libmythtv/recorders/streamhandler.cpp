@@ -268,33 +268,12 @@ bool StreamHandler::RemoveAllPIDFilters(void)
 
 void StreamHandler::UpdateListeningForEIT(void)
 {
-    vector<uint> add_eit, del_eit;
-
     QMutexLocker read_locker(&_listener_lock);
 
     StreamDataList::const_iterator it1 = _stream_data_list.begin();
     for (; it1 != _stream_data_list.end(); ++it1)
-    {
-        MPEGStreamData *sd = it1.key();
-        if (sd->HasEITPIDChanges(_eit_pids) &&
-            sd->GetEITPIDChanges(_eit_pids, add_eit, del_eit))
-        {
-            for (uint i = 0; i < del_eit.size(); i++)
-            {
-                uint_vec_t::iterator it2;
-                it2 = find(_eit_pids.begin(), _eit_pids.end(), del_eit[i]);
-                if (it2 != _eit_pids.end())
-                    _eit_pids.erase(it2);
-                sd->RemoveListeningPID(del_eit[i]);
-            }
+        it.key()->UpdateEITListeners();
 
-            for (uint i = 0; i < add_eit.size(); i++)
-            {
-                _eit_pids.push_back(add_eit[i]);
-                sd->AddListeningPID(add_eit[i]);
-            }
-        }
-    }
 }
 
 bool StreamHandler::UpdateFiltersFromStreamData(void)

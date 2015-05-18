@@ -48,6 +48,7 @@ class MTV_PUBLIC ATSCStreamData : virtual public MPEGStreamData
     inline uint GetATSCMajorMinor(uint eit_sourceid) const;
     inline bool HasATSCMajorMinorMap(void) const;
     bool HasEITPIDChanges(const uint_vec_t &in_use_pid) const override; // MPEGStreamData
+    void UpdateEITListeners(void);
     bool GetEITPIDChanges(const uint_vec_t &in_use_pid,
                           uint_vec_t &pids_to_add,
                           uint_vec_t &pids_to_del) const override; // MPEGStreamData
@@ -128,6 +129,7 @@ class MTV_PUBLIC ATSCStreamData : virtual public MPEGStreamData
     mutable bool              _atsc_eit_reset;
     atsc_eit_pid_map_t        _atsc_eit_pids;
     atsc_ett_pid_map_t        _atsc_ett_pids;
+    vector<uint>              _eit_pids;
 
     QMap<uint,uint>           _sourceid_to_atsc_maj_min;
 

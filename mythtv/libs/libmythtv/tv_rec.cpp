@@ -116,6 +116,7 @@ TVRec::TVRec(int _inputid)
       // Current recording info
       curRecording(nullptr),
       overrecordseconds(0),
+      eitIsRunning(false), eitIsFollowing(false),
       // Pseudo LiveTV recording
       pseudoLiveTVRecording(nullptr),
       nextLiveTVDir(""),            nextLiveTVDirLock(),
@@ -1349,6 +1350,21 @@ void TVRec::run(void)
         // Tell frontends about pending recordings
         HandlePendingRecordings();
 
+        bool isRunning = false, isFollowing = false;
+        if (GetDTVRecorder())
+        {
+            isRunning = GetDTVRecorder()->IsRunning();
+            isFollowing = GetDTVRecorder()->IsFollowing();
+        }
+        if (isRunning && eitIsFollowing && ! eitIsRunning)
+        {
+            // Set a bookmark at the transition from Following to Present.
+            if (curRecording)
+                curRecording->SaveBookmark(GetFramesWritten());
+        }
+        eitIsRunning = isRunning;
+        eitIsFollowing = isFollowing;
+
         // If we are recording a program, check if the recording is
         // over or someone has asked us to finish the recording.
         // Add an extra 60 seconds to the recording end time if we
@@ -1356,9 +1372,20 @@ void TVRec::run(void)
         QDateTime recEnd = (!pendingRecordings.empty()) ?
             recordEndTime.addSecs(60) : recordEndTime;
         if ((GetState() == kState_RecordingOnly) &&
-            (MythDate::current() > recEnd ||
+            ((MythDate::current() > recEnd && !isRunning) ||
              HasFlags(kFlagFinishRecording)))
         {
+            QDateTime actualTime = MythDate::current();
+            QString title;
+            if (curRecording)
+                title = curRecording->GetTitle();
+            if (actualTime > recordEndTime.addSecs(10))
+                LOG(VB_GENERAL, LOG_INFO,
+                    QString("Extended end time of recording of %1 from %2 to %3")
+                        .arg(title)
+                        .arg(MythDate::toString(recordEndTime, MythDate::kTime))
+                        .arg(MythDate::toString(actualTime, MythDate::kTime)));
+
             ChangeState(kState_None);
             ClearFlags(kFlagFinishRecording, __FILE__, __LINE__);
         }
