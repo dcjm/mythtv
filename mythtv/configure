@@ -1256,6 +1256,17 @@ add_cxxppflags(){
     append CXXPPFLAGS $($cxxppflags_filter "$@")
 }
 
+is_python3() {
+    log is_python3
+    check_cmd $python << EOF
+import sys
+if sys.version_info > (3,0):
+    sys.exit(0)
+else:
+    sys.exit(1)
+EOF
+}
+
 check_python(){
     log check_python
     check_cmd $python <<EOF
@@ -4250,6 +4261,7 @@ case $target_os in
         ! disabled joystick_menu && enable joystick_menu
         enable libudev
         enable libuuid
+        enable pic
         ;;
     irix*)
         target_os=irix
@@ -4467,15 +4479,15 @@ is_qmake4(){
     $1 --version 2>&1 | egrep -q -e "Qt version 4\.[8-9]\.[0-9]"
 }
 
-if is_qmake5 $qmake || is_qmake5 qmake-qt5; then
+if is_qmake4 $qmake || is_qmake4 qmake-qt4; then
+    if is_qmake4 qmake-qt4; then
+        qmake=qmake-qt4
+    fi
+elif is_qmake5 $qmake || is_qmake5 qmake-qt5; then
     if is_qmake5 qmake-qt5; then
         qmake=qmake-qt5
     fi
     check_cxxflags -DQT_DISABLE_DEPRECATED_BEFORE
-elif is_qmake4 $qmake || is_qmake4 qmake-qt4; then
-    if is_qmake4 qmake-qt4; then
-        qmake=qmake-qt4
-    fi
 else
     die "qmake for Qt4.8 or newer not found.\nPlease specify the correct qmake with --qmake="
 fi
@@ -5657,7 +5669,9 @@ fi
 
 if enabled gxx; then
     if enabled symbol_visibility; then
-        if expr "$gxx_version" : '4\.[2-9]' > /dev/null; then
+        # Don't check for patch levels in gcc4 series.
+        # See https://bugs.launchpad.net/ubuntu/+source/gcc-4.8/+bug/1360404
+        if expr "$gxx_version" : '4\.[2-9]' >/dev/null || expr "$gxx_version" : '[5-9]\..*\.' >/dev/null; then
             check_cxxflags -fvisibility-inlines-hidden
             append CCONFIG "use_hidesyms"
         else
@@ -5665,7 +5679,7 @@ if enabled gxx; then
             warn "--enable-symbol-visibility requires gcc 4.2 or higher"
         fi
     fi
-    if expr "$gxx_version" : '4\.[3-9]' > /dev/null; then
+    if expr "$gxx_version" : '4\.[3-9]' >/dev/null || expr "$gxx_version" : '[5-9]\..*\.' >/dev/null; then
         check_cxxflags -Wmissing-declarations
     fi
     check_cxxflags -Wno-switch
@@ -5698,6 +5712,7 @@ fi
 
 # Check for python dependencies
 if enabled bindings_python; then
+    is_python3                 && python=python2
     check_python               || disable_bindings_python "Python 2.6"
     check_py_lib MySQLdb       || disable_bindings_python "MySQLdb"
     check_py_lib lxml          || disable_bindings_python "lxml"

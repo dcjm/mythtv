@@ -356,7 +356,6 @@ DTC::TitleInfoList* Dvr::GetTitleInfoList()
     QString querystr = QString(
         "SELECT DISTINCT title, inetref "
         "    FROM recorded "
-        "    WHERE inetref <> '' "
         "    ORDER BY title");
 
     query.prepare(querystr);
@@ -935,3 +934,20 @@ bool Dvr::DisableRecordSchedule( uint nRecordId )
     return bResult;
 }
 
+bool Dvr::UpdateRecordedWatchedStatus ( int   chanid,
+                                        const QDateTime &recstarttsRaw,
+                                        bool  watched)
+{
+    if ( chanid <= 0 || !recstarttsRaw.isValid())
+        throw QString("Channel ID or StartTime appears invalid.");
+
+    ProgramInfo pi(chanid, recstarttsRaw.toUTC());
+
+    if (pi.GetChanID() && pi.HasPathname())
+    {
+        pi.SaveWatched(watched);
+        return true;
+    }
+
+    return false;
+}

@@ -27,6 +27,7 @@ using namespace std;
 #include "videosource.h" // for is_grabber..
 #include "dbcheck.h"
 #include "mythsystemevent.h"
+#include "loggingserver.h"
 #include "mythlogging.h"
 #include "signalhandling.h"
 
@@ -151,7 +152,7 @@ int main(int argc, char *argv[])
     if (cmdline.toBool("ddfile"))
     {
         // datadirect file mode
-        if (!cmdline.toBool("sourceid") || 
+        if (!cmdline.toBool("sourceid") ||
             !cmdline.toBool("offset") ||
             !cmdline.toBool("lineupid") ||
             !cmdline.toBool("xmlfile"))
@@ -205,17 +206,17 @@ int main(int argc, char *argv[])
         cmdline.SetValue("refresh",
                 cmdline.toStringList("refresh") << "today");
     if (cmdline.toBool("dontrefreshtomorrow"))
-        cmdline.SetValue("refresh", 
+        cmdline.SetValue("refresh",
                 cmdline.toStringList("refresh") << "nottomorrow");
     if (cmdline.toBool("refreshsecond"))
-        cmdline.SetValue("refresh", 
+        cmdline.SetValue("refresh",
                 cmdline.toStringList("refresh") << "second");
     if (cmdline.toBool("refreshall"))
-        cmdline.SetValue("refresh", 
+        cmdline.SetValue("refresh",
                 cmdline.toStringList("refresh") << "all");
     if (cmdline.toBool("refreshday"))
         cmdline.SetValue("refresh",
-                cmdline.toStringList("refresh") << 
+                cmdline.toStringList("refresh") <<
                                         cmdline.toStringList("refreshday"));
 
     QStringList sl = cmdline.toStringList("refresh");
@@ -302,7 +303,7 @@ int main(int argc, char *argv[])
     signallist << SIGRTMIN;
 #endif
     SignalHandler::Init(signallist);
-    signal(SIGHUP, SIG_IGN);
+    SignalHandler::SetHandler(SIGHUP, logSigHup);
 #endif
 
     gContext = new MythContext(MYTH_BINARY_VERSION);
@@ -607,10 +608,12 @@ int main(int argc, char *argv[])
 
     LOG(VB_GENERAL, LOG_INFO, "Marking episode first showings.");
     updt.prepare("UPDATE program "
-                    "JOIN (SELECT MIN(starttime) AS starttime, programid "
-                    "      FROM program "
-                    "      WHERE programid <> '' "
-                    "      GROUP BY programid "
+                    "JOIN (SELECT MIN(p.starttime) AS starttime, p.programid "
+                    "      FROM program p, channel c "
+                    "      WHERE p.programid <> '' "
+                    "            AND p.chanid = c.chanid "
+                    "            AND c.visible = 1 "
+                    "      GROUP BY p.programid "
                     "     ) AS firsts "
                     "ON program.programid = firsts.programid "
                     "  AND program.starttime = firsts.starttime "
@@ -620,11 +623,13 @@ int main(int argc, char *argv[])
     found = updt.numRowsAffected();
 
     updt.prepare("UPDATE program "
-                    "JOIN (SELECT MIN(starttime) AS starttime, title, subtitle,"
-                    "           LEFT(description, 1024) AS partdesc "
-                    "      FROM program "
-                    "      WHERE programid = '' "
-                    "      GROUP BY title, subtitle, partdesc "
+                    "JOIN (SELECT MIN(p.starttime) AS starttime, p.title, p.subtitle, "
+                    "           LEFT(p.description, 1024) AS partdesc "
+                    "      FROM program p, channel c "
+                    "      WHERE p.programid = '' "
+                    "            AND p.chanid = c.chanid "
+                    "            AND c.visible = 1 "
+                    "      GROUP BY p.title, p.subtitle, partdesc "
                     "     ) AS firsts "
                     "ON program.starttime = firsts.starttime "
                     "  AND program.title = firsts.title "
@@ -639,10 +644,12 @@ int main(int argc, char *argv[])
 
     LOG(VB_GENERAL, LOG_INFO, "Marking episode last showings.");
     updt.prepare("UPDATE program "
-                    "JOIN (SELECT MAX(starttime) AS starttime, programid "
-                    "      FROM program "
-                    "      WHERE programid <> '' "
-                    "      GROUP BY programid "
+                    "JOIN (SELECT MAX(p.starttime) AS starttime, p.programid "
+                    "      FROM program p, channel c "
+                    "      WHERE p.programid <> '' "
+                    "            AND p.chanid = c.chanid "
+                    "            AND c.visible = 1 "
+                    "      GROUP BY p.programid "
                     "     ) AS lasts "
                     "ON program.programid = lasts.programid "
                     "  AND program.starttime = lasts.starttime "
@@ -652,11 +659,13 @@ int main(int argc, char *argv[])
     found = updt.numRowsAffected();
 
     updt.prepare("UPDATE program "
-                    "JOIN (SELECT MAX(starttime) AS starttime, title, subtitle,"
-                    "           LEFT(description, 1024) AS partdesc "
-                    "      FROM program "
-                    "      WHERE programid = '' "
-                    "      GROUP BY title, subtitle, partdesc "
+                    "JOIN (SELECT MAX(p.starttime) AS starttime, p.title, p.subtitle, "
+                    "           LEFT(p.description, 1024) AS partdesc "
+                    "      FROM program p, channel c "
+                    "      WHERE p.programid = '' "
+                    "            AND p.chanid = c.chanid "
+                    "            AND c.visible = 1 "
+                    "      GROUP BY p.title, p.subtitle, partdesc "
                     "     ) AS lasts "
                     "ON program.starttime = lasts.starttime "
                     "  AND program.title = lasts.title "

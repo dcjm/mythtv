@@ -165,8 +165,8 @@ void ImportIconsWizard::enableControls(dialogState state, bool selectEnabled)
 void ImportIconsWizard::manualSearch()
 {
     QString str = m_manualEdit->GetText();
-    if (!search(escape_csv(str)))
-        m_statusText->SetText(tr("No matches found for %1") .arg(str));
+    if (!search(str))
+        m_statusText->SetText(tr("No matches found for \"%1\"").arg(str));
     else
         m_statusText->Reset();
 }
@@ -476,7 +476,7 @@ bool ImportIconsWizard::doLoad()
     m_nameText->SetText(tr("Choose icon for channel %1")
                         .arg((*m_missingIter).strName));
     m_manualEdit->SetText((*m_missingIter).strName);
-    if (!search((*m_missingIter).strNameCSV))
+    if (!search((*m_missingIter).strName))
         m_statusText->SetText(tr("No matches found for %1")
                               .arg((*m_missingIter).strName));
     else
@@ -618,9 +618,9 @@ bool ImportIconsWizard::search(const QString& strParam)
 
     CSVEntry entry2 = (*m_missingIter);
     QString channelcsv = QString("%1,%2,%3,%4,%5,%6,%7,%8\n")
-                                .arg(escape_csv(entry2.strName))
-                                .arg(escape_csv(entry2.strXmlTvId))
-                                .arg(escape_csv(entry2.strCallsign))
+                                .arg(escape_csv(QUrl::toPercentEncoding(entry2.strName)))
+                                .arg(escape_csv(QUrl::toPercentEncoding(entry2.strXmlTvId)))
+                                .arg(escape_csv(QUrl::toPercentEncoding(entry2.strCallsign)))
                                 .arg(escape_csv(entry2.strTransportId))
                                 .arg(escape_csv(entry2.strAtscMajorChan))
                                 .arg(escape_csv(entry2.strAtscMinorChan))
