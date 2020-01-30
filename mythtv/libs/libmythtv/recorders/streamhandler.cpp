@@ -272,8 +272,7 @@ void StreamHandler::UpdateListeningForEIT(void)
 
     StreamDataList::const_iterator it1 = _stream_data_list.begin();
     for (; it1 != _stream_data_list.end(); ++it1)
-        it.key()->UpdateEITListeners();
-
+        it1.key()->UpdateEITListeners();
 }
 
 bool StreamHandler::UpdateFiltersFromStreamData(void)

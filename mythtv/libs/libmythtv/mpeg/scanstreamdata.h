@@ -22,7 +22,8 @@ class MTV_PUBLIC ScanStreamData :
     using DVBStreamData::Reset;
     void Reset(void) override; // ATSCStreamData
 
-    virtual void UpdateEITListeners(void) { }
+    void UpdateEITListeners(void) override // MPEGStreamData
+        { }
     bool HasEITPIDChanges(const uint_vec_t& /*in_use_pids*/) const override // ATSCStreamData
         { return false; }
     bool GetEITPIDChanges(const uint_vec_t& /*in_use_pids*/,

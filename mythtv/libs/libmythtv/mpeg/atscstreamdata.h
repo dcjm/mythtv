@@ -47,8 +47,7 @@ class MTV_PUBLIC ATSCStreamData : virtual public MPEGStreamData
 
     inline uint GetATSCMajorMinor(uint eit_sourceid) const;
     inline bool HasATSCMajorMinorMap(void) const;
-    bool HasEITPIDChanges(const uint_vec_t &in_use_pid) const override; // MPEGStreamData
-    void UpdateEITListeners(void);
+    void UpdateEITListeners(void) override; // MPEGStreamData
     bool GetEITPIDChanges(const uint_vec_t &in_use_pid,
                           uint_vec_t &pids_to_add,
                           uint_vec_t &pids_to_del) const override; // MPEGStreamData
