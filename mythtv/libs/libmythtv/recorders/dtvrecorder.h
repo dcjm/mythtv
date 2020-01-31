@@ -132,8 +132,9 @@ class DTVRecorder :
     virtual void SetCAMPMT(const ProgramMapTable*) {}
     virtual void UpdateCAMTimeOffset(void) {}
 
-    void HandleEIT(const DVBEventInformationTable*);
-    void HandleEIT(const PremiereContentInformationTable*) {}
+    void HandleEIT(const DVBEventInformationTable*) override; // DVBEITStreamListener
+    void HandleEIT(const PremiereContentInformationTable*) override // DVBEITStreamListener
+        {}
 
     // file handle for stream
     int _stream_fd;
